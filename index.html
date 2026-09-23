@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wirtualne Organy - Cloud Edition</title>
+    <style>
+        :root { 
+            --wood-dark: #1f1108; 
+            --wood-panel: #331c11; 
+            --wood-light: #52311c;
+            --brass: #d4af37; 
+            --brass-dim: #997a00;
+            --ivory: #fdfbf7;
+            --danger: #ff4c4c; 
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background-color: var(--wood-dark);
+            background-image: repeating-linear-gradient(90deg, transparent, transparent 100px, rgba(0,0,0,0.2) 100px, rgba(0,0,0,0.2) 200px), 
+                              linear-gradient(to bottom, #1f1108, #0a0502);
+            color: #e0d0c1; 
+            padding: 20px; display: flex; justify-content: center; margin: 0; 
+        }
+        
+        .container { 
+            width: 100%; max-width: 1400px; 
+            background: linear-gradient(145deg, var(--wood-panel), var(--wood-dark));
+            border: 4px solid var(--wood-light);
+            padding: 25px; border-radius: 8px; 
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 20px 50px rgba(0,0,0,0.9); 
+        }
+        
+        h1 { text-align: center; color: var(--brass); margin-top: 0; font-family: 'Georgia', serif; font-weight: normal; letter-spacing: 4px; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
+        
+        #midi-status { text-align: center; padding: 12px; margin-bottom: 25px; border-radius: 4px; font-weight: bold; background: rgba(255, 76, 76, 0.1); color: #ff6b6b; border: 1px solid #ff4c4c; cursor: pointer; transition: 0.3s; text-shadow: 1px 1px 2px black;}
+        #midi-status.connected { background: rgba(76, 255, 76, 0.1); color: #4cff4c; border: 1px solid #4cff4c; }
+        
+        .master-panel { 
+            background: rgba(0,0,0,0.4); padding: 20px; border-radius: 4px; margin-bottom: 30px; 
+            border-top: 2px solid rgba(255,255,255,0.05); border-bottom: 2px solid rgba(0,0,0,0.8);
+            position: relative; overflow: hidden; box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+        .bellows-indicator { position: absolute; top: 0; left: 0; height: 100%; width: 5px; background: #4cff4c; transition: 0.1s; box-shadow: 0 0 10px #4cff4c;}
+
+        .layout-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; padding-left: 15px; }
+        .control-group { display: flex; flex-direction: column; }
+        .control-header { display: flex; justify-content: space-between; font-size: 0.85em; margin-bottom: 8px; color: #bca085; font-family: 'Georgia', serif;}
+        
+        input[type="range"] { 
+            -webkit-appearance: none; width: 100%; background: rgba(0,0,0,0.8); 
+            height: 6px; border-radius: 3px; outline: none; border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: inset 0 2px 4px rgba(0,0,0,0.9);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 14px; height: 20px; border-radius: 2px;
+            background: linear-gradient(to right, #e6c875, #b8860b, #e6c875); cursor: pointer; border: 1px solid #4a3600; box-shadow: 0 2px 5px rgba(0,0,0,0.8);
+        }
+
+        .console-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(0,0,0,0.5); padding-bottom: 10px; margin-bottom: 20px; }
+        .btn-add { background: linear-gradient(to bottom, #52311c, #2a150b); color: var(--brass); border: 1px solid var(--brass-dim); padding: 8px 15px; border-radius: 4px; font-family: 'Georgia', serif; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.5);}
+        .btn-add:hover { background: linear-gradient(to bottom, #6b4329, #3d2011); color: #fff;}
+
+        .console-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        
+        .register-card { 
+            background: linear-gradient(145deg, rgba(255,255,255,0.02), rgba(0,0,0,0.4));
+            border: 1px solid rgba(0,0,0,0.8); border-top: 1px solid rgba(255,255,255,0.05);
+            border-radius: 6px; padding: 15px; text-align: center; position: relative; display: flex; flex-direction: column; align-items: center;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.5);
+        }
+        
+        .register-title { font-size: 1.05em; font-family: 'Georgia', serif; margin-bottom: 25px; width: 100%; display: flex; justify-content: space-between; align-items: flex-start;}
+        .reg-info { display: flex; flex-direction: column; align-items: flex-start; margin-left: 15px; }
+        .reg-folder { font-size: 0.65em; color: var(--brass-dim); margin-bottom: 3px; font-family: sans-serif; letter-spacing: 1px; }
+        .reg-name-row { display: flex; align-items: center; gap: 5px; color: var(--ivory); text-shadow: 1px 1px 2px black;}
+        
+        .btn-delete { background: none; border: none; color: #666; cursor: pointer; font-size: 1.2em; transition: 0.2s; padding: 0;}
+        .btn-delete:hover { color: var(--danger); }
+        
+        .manubrium-wrapper { position: relative; width: 80px; height: 80px; margin: 0 auto 15px auto; }
+        .manubrium { 
+            width: 70px; height: 70px; border-radius: 50%; 
+            background: radial-gradient(circle at 30% 30%, #ffffff, #e6e3da 60%, #a8a496); 
+            border: 1px solid #7d786a; box-shadow: 0 5px 15px rgba(0,0,0,0.6), inset -3px -5px 10px rgba(0,0,0,0.2); 
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 3; position: absolute; top: 0; left: 5px; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+        }
+        .manubrium-label { color: #111; font-family: 'Georgia', serif; font-weight: bold; font-size: 0.75em; text-align: center; text-shadow: 1px 1px 0px rgba(255,255,255,0.5), -1px -1px 0px rgba(0,0,0,0.2); line-height: 1.1; width: 80%; }
+        .manubrium-stem {
+            position: absolute; top: 35px; left: 50%; width: 18px; height: 0px; 
+            background: linear-gradient(90deg, #1f0b02, #3d1c08, #1f0b02); transform: translateX(-50%); z-index: 1;
+            transition: height 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: inset 0 5px 10px rgba(0,0,0,0.9); border-radius: 0 0 4px 4px;
+        }
+        .manubrium-shadow-hole { position: absolute; top: 15px; left: 5px; width: 70px; height: 70px; border-radius: 50%; background: #000; z-index: 0; box-shadow: inset 0 5px 15px rgba(0,0,0,1); border: 2px solid #222; }
+
+        .manubrium-wrapper.active .manubrium { transform: scale(1.15) translateY(-15px); box-shadow: 0 25px 30px rgba(0,0,0,0.8), inset -3px -5px 10px rgba(0,0,0,0.2); }
+        .manubrium-wrapper.active .manubrium-stem { height: 35px; }
+
+        .voicing-panel { width: 100%; margin-top: auto; padding-top: 15px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 8px;}
+        .eq-header { font-size: 0.75em; color: #bca085; font-family: 'Georgia', serif; text-align: center; margin-top: 5px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px;}
+        .eq-container { display: flex; justify-content: space-between; height: 80px; margin: 10px 5px 0 5px; }
+        .eq-slider { -webkit-appearance: slider-vertical; appearance: slider-vertical; width: 20px; height: 100%; cursor: pointer; outline: none; background: rgba(0,0,0,0.5); border-radius: 10px; border: 1px solid #111; }
+        .eq-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 12px; border-radius: 2px; background: linear-gradient(to right, #bca085, #8c6e54, #bca085); border: 1px solid #333; box-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+        .eq-labels, .eq-freqs { display: flex; justify-content: space-between; font-size: 0.65em; margin: 5px 5px 0 5px; text-align: center; font-family: monospace;}
+        .eq-labels { color: var(--ivory);} .eq-freqs { color: #888; font-size: 0.55em; margin-bottom: 5px;}
+        .eq-labels span, .eq-freqs span { width: 30px; display: inline-block;}
+        .sweep-controls { background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); margin-top: 5px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);}
+
+        .mini-slider-row { display: flex; flex-direction: column; text-align: left; margin-bottom: 4px;}
+        .mini-slider-row label { font-size: 0.7em; color: #bca085; display: flex; justify-content: space-between; margin-bottom: 3px; font-family: 'Georgia', serif;}
+        
+        /* Cloud Fetch Button */
+        .btn-fetch { background: linear-gradient(to bottom, #193a5a, #0b1a2a); border: 1px solid #3a7ca5; color: #81c3d7; cursor: pointer; margin-top: 15px; font-size: 0.9em; transition: 0.2s; width: 100%; border-radius: 4px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); font-weight: bold;}
+        .btn-fetch:hover { color: #fff; border-color: #81c3d7; background: linear-gradient(to bottom, #255480, #112a42); }
+        
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); position: absolute; top: 18px; left: 10px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);}
+        .status-dot.loaded { background: #4cff4c; box-shadow: 0 0 8px #4cff4c, inset 0 2px 4px rgba(0,0,0,0.5); }
+
+        .sys-msg { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.9); padding: 15px 25px; border-left: 4px solid var(--brass); color: white; display: none; border-radius: 4px; z-index: 1000; font-family: monospace; font-size: 0.9em; box-shadow: 0 5px 15px rgba(0,0,0,0.8);}
+    </style>
+</head>
+<body>
+
+<div class="container" onclick="initAudio()">
+    <h1>WIRTUALNY STÓŁ GRY <span style="font-size:0.4em; vertical-align:middle;">☁️ CLOUD</span></h1>
+    <div id="midi-status" onclick="initAudio()">SYSTEM AUDIO ZABLOKOWANY (KLIKNIJ ABY AKTYWOWAĆ)</div>
+
+    <div class="master-panel">
+        <div class="bellows-indicator" id="bellows-meter"></div>
+        <h3 style="margin: 0 0 15px 15px; color: var(--brass); font-size: 1em; text-transform: uppercase; font-family: 'Georgia', serif;">Sekcja Główna & Ciśnienie Miecha</h3>
+        <div class="layout-grid">
+            <div class="control-group">
+                <div class="control-header"><span style="color:#fff;">Master</span><span id="masterVol-val">100 %</span></div>
+                <input type="range" id="masterVol" min="0" max="100" value="100" oninput="updateGlobalUI('masterVol', ' %')">
+            </div>
+            <div class="control-group">
+                <div class="control-header"><span style="color:#fff;">Rozstawa C/Cis</span><span id="stereoWidth-val">85 %</span></div>
+                <input type="range" id="stereoWidth" min="0" max="100" value="85" oninput="updateGlobalUI('stereoWidth', ' %')">
+            </div>
+            <div class="control-group">
+                <div class="control-header"><span style="color:#fff;">Pogłos (Reverb)</span><span id="reverbMix-val">30 %</span></div>
+                <input type="range" id="reverbMix" min="0" max="100" value="30" oninput="updateGlobalUI('reverbMix', ' %')">
+            </div>
+            <div class="control-group">
+                <div class="control-header"><span style="color:#fff;">Release</span><span id="globalRelease-val">300 ms</span></div>
+                <input type="range" id="globalRelease" min="10" max="2000" value="300" oninput="updateGlobalUI('globalRelease', ' ms')">
+            </div>
+            <div class="control-group">
+                <div class="control-header"><span style="color: var(--brass);">Oddech Miecha</span><span id="globalWind-val">10 %</span></div>
+                <input type="range" id="globalWind" min="0" max="40" value="10" oninput="updateGlobalUI('globalWind', ' %')">
+            </div>
+        </div>
+    </div>
+
+    <div class="console-header">
+        <h2 style="margin: 0; color: var(--ivory); font-weight: 300; font-family: 'Georgia', serif;">Manubria i Intonacja</h2>
+        <button class="btn-add" onclick="addNewRegister()">+ Dodaj nowy głos</button>
+    </div>
+    
+    <div class="console-grid" id="console-grid"></div>
+</div>
+
+<div id="sys-msg" class="sys-msg"></div>
+
+<script>
+    let registers = [
+        { id: 1001, name: "Pryncypał 8'", active: false, vol: 1.0, eq: {low: 0, lmid: 0, hmid: 0, high: 0, pGain: 0, pFreq: 1000, pQ: 1.0}, chiff: 0.15, wind: 0.05, samples: {} },
+        { id: 1002, name: "Gedackt 8'", active: false, vol: 1.0, eq: {low: 2, lmid: -2, hmid: -4, high: -8, pGain: -4, pFreq: 4000, pQ: 2.0}, chiff: 0.35, wind: 0.10, samples: {} }
+    ];
+    
+    const anchors = [
+        { note: 36, label: "C2" }, { note: 48, label: "C3" }, { note: 60, label: "C4" }, { note: 72, label: "C5" }, { note: 84, label: "C6" }
+    ];
+
+    let audioCtx = null;
+    let masterGain, dryGain, reverbMix, reverbNode;
+    let windLFO = null, windGainNode = null; 
+    let globalNoiseBuffer = null; 
+    let registerBuses = {}; 
+    let activeVoices = {};
+    let totalActivePipes = 0;
+
+    function showLog(msg) {
+        let el = document.getElementById('sys-msg');
+        el.innerHTML = msg; el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 5000);
+    }
+
+    function addNewRegister() {
+        initAudio();
+        let name = prompt("Podaj nazwę dla nowego głosu (np. Flet 4'):");
+        if (!name || name.trim() === "") return;
+        let nextId = registers.length > 0 ? Math.max(...registers.map(r => r.id)) + 1 : 1001;
+        registers.push({ id: nextId, name: name, active: false, vol: 1.0, eq: {low: 0, lmid: 0, hmid: 0, high: 0, pGain: 0, pFreq: 1000, pQ: 1.0}, chiff: 0.1, wind: 0.1, samples: {} });
+        renderMainUI();
+    }
+
+    function deleteRegister(id) {
+        if(!confirm("Na pewno chcesz trwale usunąć ten głos?")) return;
+        registers = registers.filter(r => r.id !== id);
+        renderMainUI();
+    }
+
+    function toggleReg(id) {
+        initAudio();
+        let reg = registers.find(r => r.id === id);
+        if(reg) { reg.active = !reg.active; renderMainUI(); }
+    }
+
+    function updateRegParam(id, param, val) {
+        let reg = registers.find(r => r.id === id);
+        if(!reg) return;
+        reg[param] = val / 100.0; 
+        if (registerBuses[id] && param === 'vol') registerBuses[id].gainNode.gain.value = reg.vol;
+    }
+
+    function updateRegEQ(id, band, val) {
+        let reg = registers.find(r => r.id === id);
+        if(!reg) return;
+        reg.eq[band] = parseFloat(val);
+        if(registerBuses[id]) {
+            let bus = registerBuses[id];
+            if(band === 'low') bus.eqL.gain.value = reg.eq.low;
+            else if(band === 'lmid') bus.eqLM.gain.value = reg.eq.lmid;
+            else if(band === 'hmid') bus.eqHM.gain.value = reg.eq.hmid;
+            else if(band === 'high') bus.eqH.gain.value = reg.eq.high;
+            else if(band === 'pGain') bus.eqP.gain.value = reg.eq.pGain;
+            else if(band === 'pFreq') bus.eqP.frequency.value = reg.eq.pFreq;
+            else if(band === 'pQ') bus.eqP.Q.value = reg.eq.pQ;
+        }
+    }
+
+    // --- ŁADOWANIE Z CHMURY GITHUB ---
+    async function loadFromCloud(regId) {
+        initAudio();
+        let reg = registers.find(r => r.id === regId);
+        showLog(`Pobieranie plików dla głosu: ${reg.name}... Czekaj.`);
+        
+        let loadedCount = 0;
+        for (let anchor of anchors) {
+            // ŚCIEŻKA DO GITHUBA: Oczekuje struktury /samples/1001/60.wav
+            let url = `samples/${regId}/${anchor.note}.wav`; 
+            try {
+                let res = await fetch(url);
+                if (!res.ok) throw new Error(`Brak pliku na serwerze: ${url}`);
+                
+                let arrayBuffer = await res.arrayBuffer();
+                let audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+                let loopPoints = calculatePerfectLoop(audioBuffer);
+                
+                reg.samples[anchor.note] = { buffer: audioBuffer, loopStart: loopPoints.start, loopEnd: loopPoints.end };
+                loadedCount++;
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+        
+        if(loadedCount > 0) {
+            showLog(`Sukces! Pomyślnie załadowano próbki (${loadedCount}/${anchors.length}) do pamięci RAM.`);
+        } else {
+            showLog(`BŁĄD: Nie znaleziono folderu 'samples/${regId}/' w repozytorium GitHub.`);
+        }
+        renderMainUI();
+    }
+
+    function calculatePerfectLoop(audioBuffer) {
+        let data = audioBuffer.getChannelData(0); let sampleRate = audioBuffer.sampleRate; let total = data.length;
+        if (total < sampleRate * 0.5) return { start: 0, end: audioBuffer.duration };
+        let loopStart = Math.floor(total * 0.2);
+        while (loopStart < Math.floor(total * 0.4)) { if (data[loopStart] <= 0 && data[loopStart + 1] > 0) break; loopStart++; }
+        let templateSize = 2048; let template = data.slice(loopStart, loopStart + templateSize);
+        let bestMatchEnd = total - templateSize - 1; let minError = Infinity;
+        for (let i = Math.floor(total * 0.5); i < Math.floor(total * 0.9) - templateSize; i++) {
+            if (data[i] <= 0 && data[i + 1] > 0) {
+                let error = 0;
+                for (let j = 0; j < templateSize; j += 4) error += Math.abs(data[i + j] - template[j]);
+                if (error < minError) { minError = error; bestMatchEnd = i; }
+            }
+        }
+        return { start: loopStart / sampleRate, end: bestMatchEnd / sampleRate };
+    }
+
+    function renderMainUI() {
+        const grid = document.getElementById('console-grid');
+        grid.innerHTML = '';
+        registers.forEach((reg, index) => {
+            let isReady = Object.keys(reg.samples).length > 0;
+            let panInfo = (index % 2 === 0) ? "C: Lewy, C#: Prawy" : "C: Prawy, C#: Lewy";
+            
+            grid.innerHTML += `
+                <div class="register-card">
+                    <div class="status-dot ${isReady ? 'loaded' : ''}"></div>
+                    <div class="register-title">
+                        <div class="reg-info">
+                            <span class="reg-folder">☁️ Ścieżka: samples/${reg.id}/ &nbsp;|&nbsp; 🔊 ${panInfo}</span>
+                            <div class="reg-name-row"><span>${reg.name}</span></div>
+                        </div>
+                        <button class="btn-delete" onclick="deleteRegister(${reg.id})" title="Usuń głos">×</button>
+                    </div>
+                    
+                    <div class="manubrium-wrapper ${reg.active ? 'active' : ''}" onclick="toggleReg(${reg.id})">
+                        <div class="manubrium-shadow-hole"></div>
+                        <div class="manubrium"><div class="manubrium-label">${reg.name.replace(" ", "<br>")}</div></div>
+                        <div class="manubrium-stem"></div>
+                    </div>
+                    
+                    <div class="voicing-panel">
+                        <div class="mini-slider-row vol-row">
+                            <label><span style="color:#fff;">Głośność Główna</span> <span id="vval_${reg.id}">${Math.round(reg.vol * 100)}%</span></label>
+                            <input type="range" min="0" max="100" value="${reg.vol * 100}" oninput="updateRegParam(${reg.id}, 'vol', this.value); document.getElementById('vval_${reg.id}').innerText=this.value+'%'">
+                        </div>
+
+                        <div class="eq-header">5-Band Parametric EQ</div>
+                        <div class="eq-container">
+                            <input type="range" orient="vertical" class="eq-slider" min="-12" max="12" value="${reg.eq.low}" oninput="updateRegEQ(${reg.id}, 'low', this.value); document.getElementById('eqL_${reg.id}').innerText=this.value+'dB'">
+                            <input type="range" orient="vertical" class="eq-slider" min="-12" max="12" value="${reg.eq.lmid}" oninput="updateRegEQ(${reg.id}, 'lmid', this.value); document.getElementById('eqLM_${reg.id}').innerText=this.value+'dB'">
+                            <input type="range" orient="vertical" class="eq-slider" min="-12" max="12" value="${reg.eq.hmid}" oninput="updateRegEQ(${reg.id}, 'hmid', this.value); document.getElementById('eqHM_${reg.id}').innerText=this.value+'dB'">
+                            <input type="range" orient="vertical" class="eq-slider" min="-12" max="12" value="${reg.eq.high}" oninput="updateRegEQ(${reg.id}, 'high', this.value); document.getElementById('eqH_${reg.id}').innerText=this.value+'dB'">
+                            <input type="range" orient="vertical" class="eq-slider sweep-slider" min="-12" max="12" value="${reg.eq.pGain}" oninput="updateRegEQ(${reg.id}, 'pGain', this.value); document.getElementById('eqP_${reg.id}').innerText=this.value+'dB'">
+                        </div>
+                        <div class="eq-labels">
+                            <span id="eqL_${reg.id}">${reg.eq.low}</span><span id="eqLM_${reg.id}">${reg.eq.lmid}</span><span id="eqHM_${reg.id}">${reg.eq.hmid}</span><span id="eqH_${reg.id}">${reg.eq.high}</span><span id="eqP_${reg.id}" style="color:var(--brass);">${reg.eq.pGain}</span>
+                        </div>
+                        <div class="eq-freqs">
+                            <span>150Hz</span><span>600Hz</span><span>2kHz</span><span>6kHz</span><span style="color:var(--brass);">SWP</span>
+                        </div>
+
+                        <div class="sweep-controls">
+                            <div class="mini-slider-row">
+                                <label><span style="color:var(--brass);">Częstotliwość (Sweep)</span> <span id="sfreq_${reg.id}">${reg.eq.pFreq} Hz</span></label>
+                                <input type="range" min="50" max="20000" step="10" value="${reg.eq.pFreq}" oninput="updateRegEQ(${reg.id}, 'pFreq', this.value); document.getElementById('sfreq_${reg.id}').innerText=this.value+' Hz'">
+                            </div>
+                            <div class="mini-slider-row" style="margin-top:5px;">
+                                <label><span style="color:var(--brass);">Dobroć Q (Sweep)</span> <span id="sq_${reg.id}">${reg.eq.pQ}</span></label>
+                                <input type="range" min="0.1" max="20" step="0.1" value="${reg.eq.pQ}" oninput="updateRegEQ(${reg.id}, 'pQ', this.value); document.getElementById('sq_${reg.id}').innerText=this.value">
+                            </div>
+                        </div>
+
+                        <div class="mini-slider-row" style="margin-top: 15px; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 10px;">
+                            <label><span>Szum Uderzenia (Chiff)</span> <span id="cval_${reg.id}">${Math.round(reg.chiff * 100)}%</span></label>
+                            <input type="range" min="0" max="100" value="${reg.chiff * 100}" oninput="updateRegParam(${reg.id}, 'chiff', this.value); document.getElementById('cval_${reg.id}').innerText=this.value+'%'">
+                        </div>
+                        <div class="mini-slider-row">
+                            <label><span>Szum Ciągły Wiatru</span> <span id="wval_${reg.id}">${Math.round(reg.wind * 100)}%</span></label>
+                            <input type="range" min="0" max="100" value="${reg.wind * 100}" oninput="updateRegParam(${reg.id}, 'wind', this.value); document.getElementById('wval_${reg.id}').innerText=this.value+'%'">
+                        </div>
+                    </div>
+                    <!-- NOWY PRZYCISK POBIERANIA Z GITHUBA -->
+                    <button class="btn-fetch" onclick="loadFromCloud(${reg.id})">☁️ Pobierz z serwera</button>
+                </div>
+            `;
+        });
+    }
+
+    function updateWindSag() {
+        if (!masterGain) return;
+        let pressureDrop = totalActivePipes * 0.015; 
+        let sagVolume = Math.max(0.75, 1.0 - pressureDrop); 
+        let targetVol = (document.getElementById('masterVol').value / 100.0) * sagVolume;
+        masterGain.gain.setTargetAtTime(targetVol, audioCtx.currentTime, 0.1);
+
+        let meter = document.getElementById('bellows-meter');
+        if (sagVolume < 0.85) { meter.style.background = '#ff4c4c'; meter.style.boxShadow = '0 0 10px #ff4c4c'; }
+        else if (sagVolume < 0.95) { meter.style.background = '#ffcc00'; meter.style.boxShadow = '0 0 10px #ffcc00'; }
+        else { meter.style.background = '#4cff4c'; meter.style.boxShadow = '0 0 10px #4cff4c'; }
+    }
+
+    function buildRegisterBus(reg) {
+        if (!audioCtx || registerBuses[reg.id]) return; 
+        let input = audioCtx.createGain();
+        let eqL = audioCtx.createBiquadFilter(), eqLM = audioCtx.createBiquadFilter();
+        let eqHM = audioCtx.createBiquadFilter(), eqH = audioCtx.createBiquadFilter(), eqP = audioCtx.createBiquadFilter(); 
+        let gainNode = audioCtx.createGain();
+
+        eqL.type = 'lowshelf'; eqL.frequency.value = 150; eqL.gain.value = reg.eq.low;
+        eqLM.type = 'peaking'; eqLM.frequency.value = 600; eqLM.Q.value = 1.0; eqLM.gain.value = reg.eq.lmid;
+        eqHM.type = 'peaking'; eqHM.frequency.value = 2000; eqHM.Q.value = 1.0; eqHM.gain.value = reg.eq.hmid;
+        eqH.type = 'highshelf'; eqH.frequency.value = 6000; eqH.gain.value = reg.eq.high;
+        eqP.type = 'peaking'; eqP.frequency.value = reg.eq.pFreq; eqP.Q.value = reg.eq.pQ; eqP.gain.value = reg.eq.pGain;
+        gainNode.gain.value = reg.vol;
+
+        input.connect(eqL); eqL.connect(eqLM); eqLM.connect(eqHM); eqHM.connect(eqH); eqH.connect(eqP); eqP.connect(gainNode);
+        gainNode.connect(dryGain); gainNode.connect(reverbNode);
+        registerBuses[reg.id] = { input: input, eqL: eqL, eqLM: eqLM, eqHM: eqHM, eqH: eqH, eqP: eqP, gainNode: gainNode };
+    }
+
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain(); masterGain.gain.value = document.getElementById('masterVol').value / 100;
+            dryGain = audioCtx.createGain(); reverbMix = audioCtx.createGain(); reverbNode = audioCtx.createConvolver();
+            dryGain.connect(masterGain); reverbNode.connect(reverbMix); reverbMix.connect(masterGain); masterGain.connect(audioCtx.destination);
+            
+            let sr = audioCtx.sampleRate, len = sr * 2.8, imp = audioCtx.createBuffer(2, len, sr);
+            for(let i=0; i<len; i++) { let decay = Math.pow((len-i)/len, 3); imp.getChannelData(0)[i] = (Math.random()*2-1) * decay; imp.getChannelData(1)[i] = (Math.random()*2-1) * decay; }
+            reverbNode.buffer = imp;
+            
+            windLFO = audioCtx.createOscillator(); windLFO.frequency.value = 3.2; 
+            windGainNode = audioCtx.createGain(); windGainNode.gain.value = document.getElementById('globalWind').value;
+            windLFO.connect(windGainNode); windLFO.start();
+
+            globalNoiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+            let output = globalNoiseBuffer.getChannelData(0);
+            for (let i = 0; i < globalNoiseBuffer.length; i++) { output[i] = Math.random() * 2 - 1; }
+
+            updateGlobalUI('reverbMix', ' %');
+            registers.forEach(reg => buildRegisterBus(reg));
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function updateGlobalUI(id, unit) {
+        let val = document.getElementById(id).value; document.getElementById(id+'-val').innerText = val + unit;
+        if (id === 'masterVol' && masterGain) updateWindSag(); 
+        else if (id === 'reverbMix' && reverbMix) { reverbMix.gain.value = val / 100.0; dryGain.gain.value = 1.0 - (val / 200.0); }
+        else if (id === 'stereoWidth') { for(let note in activeVoices) { activeVoices[note].forEach(v => v.updatePan()); } }
+        else if (id === 'globalWind' && windGainNode) windGainNode.gain.value = val * 0.4;
+    }
+
+    class Voice {
+        constructor(reg, note) {
+            if (!reg.active) return;
+            let loadedNotes = Object.keys(reg.samples).map(Number);
+            if (loadedNotes.length === 0) return;
+            
+            if (!registerBuses[reg.id]) buildRegisterBus(reg);
+            let bus = registerBuses[reg.id];
+
+            this.note = note; this.regId = reg.id;
+            let anchor = loadedNotes.reduce((p, c) => Math.abs(c - note) < Math.abs(p - note) ? c : p);
+            let sampleData = reg.samples[anchor]; 
+            let mechanicalDelay = Math.random() * 0.025; let startTime = audioCtx.currentTime + mechanicalDelay;
+            
+            this.src = audioCtx.createBufferSource(); this.src.buffer = sampleData.buffer; this.src.loop = true;
+            if (sampleData.loopEnd > 0) { this.src.loopStart = sampleData.loopStart; this.src.loopEnd = sampleData.loopEnd; }
+            
+            let targetRate = Math.pow(2, (note - anchor) / 12);
+            this.src.playbackRate.setValueAtTime(targetRate * 1.007, startTime);
+            this.src.playbackRate.exponentialRampToValueAtTime(targetRate, startTime + 0.08);
+
+            this.driftLfo = audioCtx.createOscillator(); this.driftLfo.frequency.value = 0.1 + Math.random() * 0.4; 
+            this.driftGain = audioCtx.createGain(); this.driftGain.gain.value = 2.5 + Math.random() * 1.5; 
+            this.driftLfo.connect(this.driftGain); this.driftGain.connect(this.src.detune); this.driftLfo.start(startTime);
+            if (windGainNode) windGainNode.connect(this.src.detune);
+            
+            this.pan = audioCtx.createStereoPanner(); this.updatePan(); 
+            this.vca = audioCtx.createGain(); this.vca.gain.setValueAtTime(0, startTime); this.vca.gain.linearRampToValueAtTime(1.0, startTime + 0.03);
+            
+            let baseFreq = 440 * Math.pow(2, (note - 69) / 12);
+            if (reg.chiff > 0.01 && globalNoiseBuffer) {
+                this.chiffSrc = audioCtx.createBufferSource(); this.chiffSrc.buffer = globalNoiseBuffer;
+                this.chiffFilter = audioCtx.createBiquadFilter(); this.chiffFilter.type = 'bandpass'; this.chiffFilter.frequency.value = baseFreq * 2.1;
+                this.chiffVca = audioCtx.createGain(); this.chiffVca.gain.setValueAtTime(0, startTime);
+                this.chiffVca.gain.linearRampToValueAtTime(reg.chiff * 2.0, startTime + 0.01); this.chiffVca.gain.setTargetAtTime(0, startTime + 0.02, 0.04);
+                this.chiffSrc.connect(this.chiffFilter); this.chiffFilter.connect(this.chiffVca); this.chiffVca.connect(this.pan); this.chiffSrc.start(startTime);
+            }
+
+            if (reg.wind > 0.01 && globalNoiseBuffer) {
+                this.windSrc = audioCtx.createBufferSource(); this.windSrc.buffer = globalNoiseBuffer; this.windSrc.loop = true;
+                this.windFilter = audioCtx.createBiquadFilter(); this.windFilter.type = 'bandpass'; this.windFilter.frequency.value = Math.max(baseFreq * 4, 3500); this.windFilter.Q.value = 0.5;
+                this.windVca = audioCtx.createGain(); this.windVca.gain.setValueAtTime(0, startTime);
+                this.windVca.gain.linearRampToValueAtTime(reg.wind * 0.025, startTime + 0.1);
+                this.windSrc.connect(this.windFilter); this.windFilter.connect(this.windVca); this.windVca.connect(this.pan); this.windSrc.start(startTime);
+            }
+            
+            this.src.connect(this.pan); this.pan.connect(this.vca); this.vca.connect(bus.input); this.src.start(startTime);
+            totalActivePipes++; updateWindSag();
+        }
+        
+        updatePan() {
+            if(!this.pan) return;
+            let width = parseFloat(document.getElementById('stereoWidth').value) / 100.0;
+            let isCScale = [0,2,4,6,8,10].includes(this.note % 12);
+            let regIndex = registers.findIndex(r => r.id === this.regId);
+            let invert = (regIndex % 2 === 1) ? -1 : 1; 
+            let panTarget = (isCScale ? -width : width) * invert;
+            this.pan.pan.value = Math.max(-1, Math.min(1, panTarget));
+        }
+
+        stop() {
+            if(!this.vca) return;
+            let t = audioCtx.currentTime; let rawRelease = parseFloat(document.getElementById('globalRelease').value) / 1000.0; let release = Math.min(Math.max(rawRelease, 0.05), 1.5); 
+            
+            this.vca.gain.cancelScheduledValues(t); this.vca.gain.setValueAtTime(this.vca.gain.value, t); this.vca.gain.linearRampToValueAtTime(0.00001, t + release);
+            if (this.windVca) { this.windVca.gain.cancelScheduledValues(t); this.windVca.gain.setValueAtTime(this.windVca.gain.value, t); this.windVca.gain.linearRampToValueAtTime(0.00001, t + release); }
+            if (this.chiffVca) { this.chiffVca.gain.cancelScheduledValues(t); this.chiffVca.gain.setTargetAtTime(0, t, 0.02); }
+            
+            let stopTime = t + release + 0.1;
+            try { this.src.stop(stopTime); } catch(e){}
+            if (this.windSrc) { try { this.windSrc.stop(stopTime); } catch(e){} }
+            if (this.chiffSrc) { try { this.chiffSrc.stop(stopTime); } catch(e){} }
+            if (this.driftLfo) { try { this.driftLfo.stop(stopTime); } catch(e){} }
+            
+            setTimeout(() => {
+                if (windGainNode) { try { windGainNode.disconnect(this.src.detune); } catch(e){} }
+                if(this.vca) this.vca.disconnect(); if(this.pan) this.pan.disconnect();
+                if(this.windVca) this.windVca.disconnect(); if(this.chiffVca) this.chiffVca.disconnect(); if(this.driftGain) this.driftGain.disconnect();
+            }, (release * 1000) + 200);
+            
+            totalActivePipes = Math.max(0, totalActivePipes - 1); updateWindSag();
+        }
+    }
+
+    navigator.requestMIDIAccess().then(m => {
+        let inputs = m.inputs.values(), ok = false;
+        for (let i of inputs) { i.onmidimessage = handleMIDI; document.getElementById('midi-status').innerHTML = "POŁĄCZONO Z: " + i.name.toUpperCase(); document.getElementById('midi-status').className = "connected"; ok = true; }
+        if(!ok) document.getElementById('midi-status').innerHTML = "PODŁĄCZ KLAWIATURĘ MIDI LUB OŚWIEŻ STRONĘ";
+    }).catch(() => document.getElementById('midi-status').innerHTML = "BŁĄD DOSTĘPU DO URZĄDZEŃ MIDI");
+
+    function handleMIDI(m) {
+        initAudio(); let cmd = m.data[0] >> 4, note = m.data[1], vel = m.data[2] || 0;
+        if (cmd === 9 && vel > 0) {
+            if (activeVoices[note] && activeVoices[note].length > 0) activeVoices[note].forEach(v => v.stop());
+            activeVoices[note] = []; registers.forEach(reg => { if(reg.active) activeVoices[note].push(new Voice(reg, note)); });
+        } else if (cmd === 8 || (cmd === 9 && vel === 0)) {
+            if (activeVoices[note]) { activeVoices[note].forEach(v => v.stop()); delete activeVoices[note]; }
+        }
+    }
+
+    window.onload = () => { renderMainUI(); };
+</script>
+</body>
+</html>
